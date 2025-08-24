@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+.Python
+*.dist-info/
+.venv/
+.env
+.env.*
+*.env
+*.key
+*.pem
+uploads/
+
