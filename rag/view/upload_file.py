@@ -1,16 +1,16 @@
-from knowledge_system.errors import NexDATAError, NexDATAException
+from knowledge_system.errors import KMsystemError, KMsystemException
 from drf_spectacular.utils import extend_schema
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes
-from knowledge_system.utils.decorator import try_catch_decorator
+from knowledge_system.Utils.decorator import try_catch_decorator
 from knowledge_system.responses import NexDATAResponse
 from knowledge_system.settings import MEDIA_ROOT, COLLECTION
-from knowledge_system.connection import Connection
-from raghub.serializers import (
+from rag.serializers import (
     UploadFileSerializer,
     MessageSerializer
 )
-from raghub.models import PdfTopicMap
+from knowledge_system.connections import Connection
+from rag.models import PdfTopicMap
 from qdrant_client.http import models
 from qdrant_client.http.models import PointStruct
 from pypdf import PdfReader
@@ -19,6 +19,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import os
 from uuid import uuid4
+import pdb
 
 CHUNK_SIZE = 300
 CHUNK_OVERLAP = 20
@@ -46,7 +47,7 @@ def upload_file(request):
         topic = s.validated_data["topic"]
         permission_tags = s.validated_data["permission_tags"]
     except Exception as e:
-        raise NexDATAException(NexDATAError.INVALID_PARAMETER, e) 
+        raise KMsystemException(KMsystemError.INVALID_API, e) 
     
     # 檔案儲存
     filename = file.name
@@ -60,7 +61,7 @@ def upload_file(request):
 
 def _check_unique_file_topic(topic, filename):
     if PdfTopicMap.objects.filter(pdf_name = filename, topic = topic).exists():
-        raise NexDATAException(NexDATAError.DB_SERVER_ERROR, f"{filename}已經存在{topic}請勿重複上傳")
+        raise KMsystemException(KMsystemError.DB_SERVER_ERROR, f"{filename}已經存在{topic}請勿重複上傳")
 
 # 檔案儲存
 def _file_save(filename, chunks, topic):
@@ -74,7 +75,7 @@ def _file_save(filename, chunks, topic):
                 destination.write(chunk)
         return file_path
     except Exception as e:
-        raise NexDATAException(NexDATAError.INTERNAL_SERVER_ERROR, e)
+        raise KMsystemException(KMsystemError.INTERNAL_SERVER_ERROR, e)
     
 # 轉成文字
 def _pdf_to_text(file_path):
@@ -85,7 +86,7 @@ def _pdf_to_text(file_path):
             text = page.extract_text()
             full_text += text + "\n"
     except PdfReadError as e:
-        raise NexDATAException(NexDATAError.INTERNAL_SERVER_ERROR, e)
+        raise KMsystemException(KMsystemError.INTERNAL_SERVER_ERROR, e)
     return full_text
 
 # 文字切割
@@ -95,7 +96,7 @@ def _split_text(text):
             separator="\n", chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
         ).split_text(text)
     except ValueError as e:
-        raise NexDATAException(NexDATAError.INTERNAL_SERVER_ERROR, e)
+        raise KMsystemException(KMsystemError.INTERNAL_SERVER_ERROR, e)
     return text_splitter
 
 def _save_to_qdrant(topic, text_splitter, filename, permission_tags):
@@ -111,7 +112,7 @@ def _save_to_qdrant(topic, text_splitter, filename, permission_tags):
                 hnsw_config=models.HnswConfigDiff(on_disk=True, m=NEAR_NODE, ef_construct=EF_CONSTRUCT),
             )
     except Exception as e:
-        raise NexDATAException(NexDATAError.QDRANT_SERVER_ERROR, e)
+        raise KMsystemException(KMsystemError.QDRANT_SERVER_ERROR, e)
     #檢測collection是否存在
     embedding_func = SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code = True)
     document_id = str(uuid4())
@@ -121,7 +122,7 @@ def _save_to_qdrant(topic, text_splitter, filename, permission_tags):
         try:
             response = embedding_func.encode([text])[0]
         except Exception as e:
-            raise NexDATAException(NexDATAError.INTERNAL_SERVER_ERROR, message = e)        
+            raise KMsystemException(KMsystemError.INTERNAL_SERVER_ERROR, message = e)        
         try:
             Connection().qdrant_connection().upsert(
                 collection_name=COLLECTION,
@@ -140,7 +141,7 @@ def _save_to_qdrant(topic, text_splitter, filename, permission_tags):
                 ],
             )
         except Exception as e:
-            raise NexDATAException(NexDATAError.QDRANT_SERVER_ERROR, message = e)
+            raise KMsystemException(KMsystemError.QDRANT_SERVER_ERROR, message = e)
     #更新collection與檔案的對照表  
     try:
         PdfTopicMap.objects.get_or_create(
@@ -149,5 +150,5 @@ def _save_to_qdrant(topic, text_splitter, filename, permission_tags):
             topic = topic
         )
     except Exception as e:
-        NexDATAException(NexDATAError.DB_SERVER_ERROR, e)
+        KMsystemException(KMsystemError.DB_SERVER_ERROR, e)
     return document_id

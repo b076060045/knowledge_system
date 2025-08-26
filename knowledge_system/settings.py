@@ -39,8 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "rag",
-    "auth"
+    "rag"
 ]
 
 MIDDLEWARE = [
@@ -124,3 +123,15 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 COLLECTION = "Document"
+
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
+
+AUTHENTICATION_BACKENDS = (
+    "django.contrib.auth.backends.ModelBackend",  # 先讓一般權限可用
+    "guardian.backends.ObjectPermissionBackend",  # 再加物件層級權限
+)
+
+ANONYMOUS_USER_NAME = "anonymous"
+
+OLLAMA_URL = "http://localhost:11434/api/generate"

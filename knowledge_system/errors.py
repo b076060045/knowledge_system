@@ -1,31 +1,23 @@
 from xmlrpc.client import INTERNAL_ERROR
 from django.http import HttpResponse, JsonResponse
+from pydantic import Json
 from rest_framework import status as http_status
 
 
-class NexDATAError:
+class KMsystemError:
     @staticmethod
-    def to_json_response(error, status, message):
-        """
-        返回標準化的 JsonResponse 錯誤響應
-        :param error: 錯誤字典（例如 NexDATAError.INVALID_API）
-        :param status: HTTP 狀態碼，默認為 400
-        :param message: 可選的附加訊息
-        :return: JsonResponse 對象
-        """
-        error_message = error["message"]
+    def to_json_response(error, message, status = http_status.HTTP_400_BAD_REQUEST):
         if message:
-            error_message = f"{error_message} {message}"
+            message = f"{error['message']} {message}"
+        else:
+            message = error['message']
+        status = error['status']
+        
+        return JsonResponse(data = {"error": error, "message": message, "status": status})
 
-        return JsonResponse({
-            "code": error["code"],
-            "message": error_message,
-        }, status=status)
-    
-    # API 路由問題
+        # API 路由問題
     INVALID_API = {
         "code": 1001, "message": "[Invalid API Error]", "status": http_status.HTTP_400_BAD_REQUEST}
-
     # 登入者問題
     UNAUTHORIZED_TOKEN = {
         "code": 1101, "message": "[Unauthorized Token Error]", "status": http_status.HTTP_401_UNAUTHORIZED}
@@ -67,25 +59,16 @@ class NexDATAError:
     DB_SERVER_ERROR = {
         "code": 9995, "message": "[Database Server Error]", "status": http_status.HTTP_408_REQUEST_TIMEOUT
     }
+    
 
-
-class NexDATAException(Exception):
-    def __init__(self, error, message=None, status=http_status.HTTP_400_BAD_REQUEST):
-        """
-        初始化異常
-        :param error: 錯誤字典（如 NexDATAError.INVALID_PARAMETER）
-        :param message: 附加的詳細資訊
-        :param status: HTTP 狀態碼，默認為 400
-        """
+class KMsystemException(Exception):
+    def __init__(self, error, message = None, status = None):
         self.error = error
         self.message = message
-        self.status = error.get("status", status)
+        self.status = status
 
         super().__init__(self.error['message'])
 
-    def to_response(self):
-        """
-        轉換為 JsonResponse 格式
-        :return: JsonResponse
-        """
-        return NexDATAError.to_json_response(self.error, status=self.status, message=self.message)
+    def to_json(self):
+        return KMsystemError.to_json_response(self.error, self.message, self.status)
+
