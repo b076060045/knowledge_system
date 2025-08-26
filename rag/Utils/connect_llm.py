@@ -11,13 +11,12 @@ OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 class LlmConfig:
     provider: str
     model: str
-    prompt: str
 
-def call_llm(cfg: LlmConfig):
+def call_llm(prompt: str, cfg: LlmConfig):
     if cfg.provider == "ollama":
-        _call_ollama(cfg.prompt, cfg.model)
+        _call_ollama(prompt, cfg.model)
     elif cfg.provider == 'openai':
-        _call_openai(cfg.prompt, cfg.model)
+        _call_openai(prompt, cfg.model)
 
 def _call_ollama(prompt, model):
     try:

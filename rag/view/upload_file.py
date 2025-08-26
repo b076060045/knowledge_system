@@ -3,7 +3,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.decorators import api_view, parser_classes
 from knowledge_system.Utils.decorator import try_catch_decorator
-from knowledge_system.responses import NexDATAResponse
+from knowledge_system.responses import KMsystemResponse
 from knowledge_system.settings import MEDIA_ROOT, COLLECTION
 from rag.serializers import (
     UploadFileSerializer,
@@ -57,7 +57,7 @@ def upload_file(request):
     full_text = _pdf_to_text(file_path)
     text_splitter = _split_text(full_text)
     document_id = _save_to_qdrant(topic, text_splitter, filename, permission_tags)
-    return NexDATAResponse.to_json_response(document_id)   
+    return KMsystemResponse.to_json_response(document_id)   
 
 def _check_unique_file_topic(topic, filename):
     if PdfTopicMap.objects.filter(pdf_name = filename, topic = topic).exists():

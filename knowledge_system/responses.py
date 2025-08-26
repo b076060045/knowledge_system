@@ -3,7 +3,7 @@ from django.http import JsonResponse
 SUCCESSFUL_CODE = 0
 
 
-class NexDATAResponse:
+class KMsystemResponse:
     """
     定義成功回應的靜態工具類
     """
